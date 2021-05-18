@@ -6,7 +6,7 @@ import sys
 from enum import Enum
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler((stdout_handler))
 
