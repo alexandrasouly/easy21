@@ -1,4 +1,3 @@
-from _typeshed import NoneType
 from numpy.random import randint
 from random import choices
 from dataclasses import dataclass
@@ -35,65 +34,67 @@ class Action(Enum):
     HIT = 1
 
 
-class Game:
+class GameRound:
     """The simulated Easy 21 game environment"""
 
     def __init__(self, state: State, action) -> None:
         self.state: State = state
         self.action: Action = action
-        self.new_terminal: bool = False
-        self.new_reward: int = 0
 
     def play_game(self):
         if self.action == Action.HIT:
-            logger.info("we hit")
-            self.new_player_sum = self.hit(player_sum=self.state.player_sum)
-            if self.new_player_sum > 21 or self.new_player_sum < 1:
-                logger.info("we went bust")
-                self.new_terminal = True
-                self.new_reward = -1
-
-        if self.action == Action.STICK:
-            logger.info("we stick")
-            self.new_terminal = True
-            self.new_player_sum = self.state.player_sum
-
-            self.play_dealer()
-            if self.dealer_bust:
-                logger.info("the dealer is bust")
-                self.new_reward = 1
+            logger.debug("we hit")
+            new_player_sum = self.hit(player_sum=self.state.player_sum)
+            if new_player_sum > 21 or new_player_sum < 1:
+                logger.debug("we went bust")
+                new_terminal = True
+                new_reward = -1
             else:
-                logger.info(
-                    f"we have: {self.new_player_sum}, dealer has {self.dealer_sum} "
-                )
-                if self.new_player_sum > self.dealer_sum:
-                    self.new_reward = 1
-                    logger.info("we won")
-                elif self.new_player_sum == self.dealer_sum:
-                    logger.info("we draw")
-                    self.new_reward = 0
-                elif self.new_player_sum < self.dealer_sum:
-                    logger.info("we lose")
-                    self.new_reward = -1
+                new_terminal = False
+                new_reward = 0
 
-        self.new_state = State(
+        elif self.action == Action.STICK:
+            logger.debug("we stick")
+            new_terminal = True
+            new_player_sum = self.state.player_sum
+            dealer_sum, dealer_bust = self.play_dealer()
+
+            if dealer_bust:
+                logger.debug("the dealer is bust")
+                new_reward = 1
+            else:
+                logger.debug(f"we have: {new_player_sum}, dealer has {dealer_sum} ")
+                if new_player_sum > dealer_sum:
+                    new_reward = 1
+                    logger.debug("we won")
+                elif new_player_sum == dealer_sum:
+                    logger.debug("we draw")
+                    new_reward = 0
+                elif new_player_sum < dealer_sum:
+                    logger.debug("we lose")
+                    new_reward = -1
+
+        new_state = State(
             self.state.dealer_first_card,
-            self.new_player_sum,
-            self.new_terminal,
+            new_player_sum,
+            new_terminal,
         )
-        logger.info(self.new_state)
-        logger.info(self.new_reward)
+        logger.debug(new_state)
+        logger.debug(new_reward)
+
+        return new_state, new_reward
 
     def play_dealer(self):
-        self.dealer_sum = self.state.dealer_first_card
-        while self.dealer_sum < 17:
-            logger.info(f"dealer is hitting on hand {self.dealer_sum}")
-            self.dealer_sum = self.hit(self.dealer_sum)
-            logger.info(f"now dealer has {self.dealer_sum}")
-        if self.dealer_sum > 21 or self.dealer_sum < 1:
-            self.dealer_bust = True
+        dealer_sum = self.state.dealer_first_card
+        while dealer_sum < 17:
+            logger.debug(f"dealer is hitting on hand {dealer_sum}")
+            dealer_sum = self.hit(dealer_sum)
+            logger.debug(f"now dealer has {dealer_sum}")
+        if dealer_sum > 21 or dealer_sum < 1:
+            dealer_bust = True
         else:
-            self.dealer_bust = False
+            dealer_bust = False
+        return dealer_bust, dealer_sum
 
     @staticmethod
     def draw_next_card():
@@ -109,7 +110,7 @@ class Game:
             player_sum += new_card.value
         elif new_card.colour == Colour.RED:
             player_sum -= new_card.value
-        logger.info(
+        logger.debug(
             f"with new card {new_card.colour, new_card.value} player sum is {player_sum}"
         )
         return player_sum
@@ -123,10 +124,8 @@ class Environment:
             self.start_state = start_state
 
     def step(self, state: State, action: str):
-        game = Game(state, action)
-        game.play_game()
-        new_state = game.new_state
-        reward = game.new_reward
+        game = GameRound(state, action)
+        new_state, reward = game.play_game()
 
         return new_state, reward
 
