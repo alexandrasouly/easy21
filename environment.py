@@ -1,3 +1,4 @@
+from _typeshed import NoneType
 from numpy.random import randint
 from random import choices
 from dataclasses import dataclass
@@ -38,10 +39,10 @@ class Game:
     """The simulated Easy 21 game environment"""
 
     def __init__(self, state: State, action) -> None:
-        self.state = state
-        self.action = action
-        self.new_terminal = False
-        self.new_reward = 0
+        self.state: State = state
+        self.action: Action = action
+        self.new_terminal: bool = False
+        self.new_reward: int = 0
 
     def play_game(self):
         if self.action == Action.HIT:
@@ -97,9 +98,9 @@ class Game:
     @staticmethod
     def draw_next_card():
         value = randint(1, 11)
-        colour = choices(
-            population=[Colour.RED, Colour.BLACK], weights=[1 / 3, 2 / 3]
-        )[0]
+        colour = choices(population=[Colour.RED, Colour.BLACK], weights=[1 / 3, 2 / 3])[
+            0
+        ]
         return Card(colour, value)
 
     def hit(self, player_sum: int):
@@ -115,7 +116,13 @@ class Game:
 
 
 class Environment:
-    def step(self, state: State, action: str) -> State:
+    def __init__(self, start_state=None):
+        if start_state == None:
+            self.start_state = self.get_start_state()
+        else:
+            self.start_state = start_state
+
+    def step(self, state: State, action: str):
         game = Game(state, action)
         game.play_game()
         new_state = game.new_state
@@ -123,8 +130,14 @@ class Environment:
 
         return new_state, reward
 
+    @staticmethod
+    def get_start_state():
+        start_state = State(
+            dealer_first_card=randint(1, 11), player_sum=randint(1, 11), terminal=False
+        )
+        return start_state
+
 
 if __name__ == "__main__":
     env = Environment()
-    start_state = State(5, 5)
-    new_state = env.step(start_state, Action.STICK)
+    new_state = env.step(Action.STICK)
