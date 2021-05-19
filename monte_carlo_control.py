@@ -8,7 +8,7 @@ from mpl_toolkits import mplot3d
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler((stdout_handler))
 
@@ -141,7 +141,7 @@ def plot_value(action_value_file):
 
 
 if __name__ == "__main__":
-    trainer = Train(3)
+    trainer = Train(1000000)
     trainer.run_mc()
 
     np.save("MC_Control_action_value", trainer.agent.action_value_function)

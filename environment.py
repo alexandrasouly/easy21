@@ -6,7 +6,7 @@ import sys
 from enum import Enum
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler((stdout_handler))
 
@@ -57,7 +57,7 @@ class GameRound:
             logger.debug("we stick")
             new_terminal = True
             new_player_sum = self.state.player_sum
-            dealer_sum, dealer_bust = self.play_dealer()
+            dealer_bust, dealer_sum = self.play_dealer()
 
             if dealer_bust:
                 logger.debug("the dealer is bust")
@@ -86,7 +86,7 @@ class GameRound:
 
     def play_dealer(self):
         dealer_sum = self.state.dealer_first_card
-        while dealer_sum < 17:
+        while 1 <= dealer_sum < 17:
             logger.debug(f"dealer is hitting on hand {dealer_sum}")
             dealer_sum = self.hit(dealer_sum)
             logger.debug(f"now dealer has {dealer_sum}")
@@ -139,4 +139,4 @@ class Environment:
 
 if __name__ == "__main__":
     env = Environment()
-    new_state = env.step(Action.STICK)
+    new_state = env.step(env.start_state, Action.STICK)
