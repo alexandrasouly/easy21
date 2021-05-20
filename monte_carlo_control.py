@@ -1,12 +1,15 @@
 import logging
-from typing import Tuple
-from environment import Action, Environment, State
-import numpy as np
+import os
 import sys
+from typing import Tuple
+
 import matplotlib.pyplot as plt
-from mpl_toolkits import mplot3d
+import numpy as np
 
+from environment import Action, Game, State
+from utils import Visuals
 
+# Setting up logging to stdout INFO level logs
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 stdout_handler = logging.StreamHandler(sys.stdout)
@@ -15,35 +18,38 @@ logger.addHandler((stdout_handler))
 
 class MCControlAgent:
     """
-    for episode in  many episodes:
-        play the episode with our current policy
-            initialise a state
-            until in terminal state:
-                act according to policy
-                keep track of visited states, rewards
-        update policy: Q, N(s,a), N(s), G, eps
+    Agent that will play MC Control with epsilon greedy policy improvements
+    across many episodes.
+
     """
 
     N0 = 100
 
     def __init__(self):
+        # Q(s,a)
         self.action_value_function = np.zeros(
             (10 + 1, 21 + 1, 2)
         )  # dealer showing x player sum x action
+
+        # N(s)
         self.state_count = np.zeros(
             (10 + 1, 21 + 1)
         )  # dealer showing x player sum x action
+
+        # N(s,a)
         self.state_action_count = np.zeros(
             (10 + 1, 21 + 1, 2)
         )  # dealer showing x player sum x action
         self.win_rate = 0
 
     def eps(self, state: State):
+        """Epsilon for the epsilon-greedy policy: eps = N0/(N0 + N(s))"""
         return self.N0 / (
             self.N0 + self.state_count[state.dealer_first_card, state.player_sum]
         )
 
     def alpha(self, state: State, action: Action):
+        """Alpha for the Q update step size; α = 1/N(s, a)"""
         return (
             1
             / self.state_action_count[
@@ -51,8 +57,11 @@ class MCControlAgent:
             ]
         )
 
-    def action_from_policy(self, state: State):  # this is the policy, based on Q(s,a)
-        """Implements epsilon greedy policy."""
+    def action_from_policy(self, state: State):
+        """
+        Implements epsilon greedy policy.
+        With P = 1-eps chooses best action, with P = eps chooses random action.
+        """
         p = np.random.random()
         if p <= 1 - self.eps(state):  #  with prob 1-eps
             action = np.argmax(
@@ -65,30 +74,48 @@ class MCControlAgent:
 
 
 class Episode:
+    """
+    Play a whole episode of Easy 21 with our agent.
+    The structure of the whole process is the following:
+    - for episode in  many episodes:
+        - play the episode with our current policy
+            - initialise a state
+            - until in terminal state:
+                - act according to policy
+                - keep track of visited states, rewards
+        - update policy: Q, N(s,a), N(s), G, eps
+    This class is dealing with acting according to policy and tracing visited states.
+    """
+
     def __init__(self, agent: MCControlAgent) -> None:
-        self.env = Environment()
+        self.env = Game()
         self.agent = agent
         self.state = self.env.start_state
         self.visited: Tuple[State, Action, int] = []
         self.win = False
 
-    def run_episode(self):  # run an episode based on policy
+    def run_episode(self):
+        """Run the episode and update policy at the end"""
         while self.state.terminal == False:
+            # get action
             action_int = self.agent.action_from_policy(self.state)
+            # play round with aciton
             new_state, reward = self.env.step(self.state, action=Action(action_int))
+            # track visited states
             self.visited.append((self.state, Action(action_int), reward))
             self.state = new_state
         self.update_policy()
         if reward == 1:
-            self.win = True
+            self.win = True  # for win_rate calculations
 
     def update_policy(self):
+        """At the end of the episode, update counter and policy for visited states."""
         for state, action, _ in self.visited:
             self.agent.state_action_count[
                 state.dealer_first_card, state.player_sum, action.value
             ] += 1
             self.agent.state_count[state.dealer_first_card, state.player_sum] += 1
-            final_reward = self.visited[-1][2]
+            final_reward = self.visited[-1][2]  # G_t
             error = (
                 final_reward
                 - self.agent.action_value_function[
@@ -101,13 +128,41 @@ class Episode:
 
 
 class Train:
+    """This class is training the agent for many episodes."""
+
     def __init__(self, episode_count) -> None:
         self.episode_count = episode_count
         self.agent = MCControlAgent()
         self.win_rates = []
         self.wins = 0
+        self.print_episodes = [  # the episdoes we want to plot at the end
+            1,
+            5,
+            10,
+            25,
+            50,
+            100,
+            150,
+            200,
+            300,
+            500,
+            1000,
+            2500,
+            5000,
+            7500,
+            10000,
+            50000,
+            100000,
+            200000,
+            300000,
+            400000,
+            600000,
+            800000,
+            self.episode_count,
+        ]
 
     def run_mc(self):
+        """Run the full MC Control algorithm for many episodes."""
         for current_episode_count in range(1, self.episode_count + 1):
             episode = Episode(self.agent)
             episode.run_episode()
@@ -115,41 +170,30 @@ class Train:
                 self.wins += 1
                 win_rate = self.wins / (current_episode_count)
 
+            # print progress during training
             if current_episode_count % 10000 == 0:
                 logger.info(
                     f" After episode {current_episode_count}, the win rate is: {win_rate}"
                 )
                 self.win_rates.append(win_rate)
 
-
-def plot_value(action_value_file):
-    with open(action_value_file, "rb") as f:
-        action_value = np.load(f)
-
-    value = np.max(action_value, axis=2)
-    fig = plt.figure(figsize=(10, 5))
-    ax = plt.axes(projection="3d")
-    x_range = np.arange(1, action_value.shape[0])
-    y_range = np.arange(1, action_value.shape[1])
-    X, Y = np.meshgrid(x_range, y_range)
-    Z = value[X, Y]
-    ax.set_xlabel("Dealer First card")
-    ax.set_ylabel("Player Sum")
-    ax.set_zlabel("Value")
-    ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
-    plt.savefig("Value_fn.png")
+            # save values function for final gif
+            if current_episode_count in self.print_episodes:
+                np.save(
+                    f"mc_control_results/MC_Control_{current_episode_count}",
+                    self.agent.action_value_function,
+                )
+                Visuals.plot_value(
+                    f"mc_control_results/MC_Control_{current_episode_count}.npy",
+                    current_episode_count,
+                )
 
 
 if __name__ == "__main__":
     trainer = Train(1000000)
     trainer.run_mc()
 
-    np.save("MC_Control_action_value", trainer.agent.action_value_function)
-    np.save("MC_Control_win_rate", trainer.win_rates)
+    np.save("mc_control_results/MC_Control_win_rate", trainer.win_rates)
+    Visuals.plot_win_rates("mc_control_results/MC_Control_win_rate.npy")
 
-    plt.plot(trainer.win_rates)
-    plt.xlabel("Thousand episode played")
-    plt.ylabel("Win Rate")
-    plt.savefig("MC_control.png")
-
-    plot_value("MC_Control_action_value.npy")
+    Visuals.make_gif("mc_control_results")
