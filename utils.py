@@ -1,6 +1,7 @@
 import os
-
+import numpy as np
 import imageio
+import matplotlib.pyplot as plt
 
 
 class Visuals:
@@ -23,7 +24,7 @@ class Visuals:
         imageio.mimsave(f"{folder}/{gif_name}.gif", images, fps=1)
 
     @staticmethod
-    def plot_value(action_value_file, episode_count):
+    def plot_value(action_value_file, episode_count, lamda=None):
         """Making the plots of the value function"""
         with open(action_value_file, "rb") as f:
             action_value = np.load(f)
@@ -38,12 +39,15 @@ class Visuals:
         ax.set_xlabel("Dealer First card")
         ax.set_ylabel("Player Sum")
         ax.set_zlabel("Value")
-        ax.set_title(f"Ep. {episode_count} action-value function")
+        if lamda == None:
+            ax.set_title(f"Ep. {episode_count} action-value function")
+        else:
+            ax.set_title(f"Ep. {episode_count} action-value function with λ={lamda}")
         ax.plot_surface(X, Y, Z, rstride=1, cstride=1, cmap="viridis", edgecolor="none")
         fig.savefig(os.path.splitext(action_value_file)[0] + ".png")
 
     @staticmethod
-    def plot_win_rates(win_rates_file):
+    def plot_win_rates(win_rates_file, lamda=None):
         """Making the plot of the win rate function"""
         with open(win_rates_file, "rb") as f:
             win_rates = np.load(f)
@@ -51,4 +55,8 @@ class Visuals:
         ax.plot(win_rates)
         ax.set_xlabel("Thousand episode played")
         ax.set_ylabel("Win rate")
+        if lamda == None:
+            ax.set_title(f"Win rates")
+        else:
+            ax.set_title(f"Win rates with λ={lamda}")
         fig.savefig(os.path.splitext(win_rates_file)[0] + ".png")

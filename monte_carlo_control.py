@@ -161,7 +161,7 @@ class Train:
             self.episode_count,
         ]
 
-    def run_mc(self):
+    def run_mc_for_gif(self):
         """Run the full MC Control algorithm for many episodes."""
         for current_episode_count in range(1, self.episode_count + 1):
             episode = Episode(self.agent)
@@ -191,9 +191,9 @@ class Train:
 
 if __name__ == "__main__":
     trainer = Train(1000000)
-    trainer.run_mc()
+    trainer.run_mc_for_gif()
 
     np.save("mc_control_results/MC_Control_win_rate", trainer.win_rates)
     Visuals.plot_win_rates("mc_control_results/MC_Control_win_rate.npy")
 
-    Visuals.make_gif("mc_control_results")
+    Visuals.make_gif(folder="mc_control_results", gif_name="MC_Control")
