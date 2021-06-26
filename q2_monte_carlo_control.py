@@ -1,12 +1,9 @@
 import logging
-import os
 import sys
 from typing import Tuple
-
-import matplotlib.pyplot as plt
 import numpy as np
 
-from environment import Action, Game, State
+from q1_environment import Action, Game, State
 from utils import Visuals
 
 # Setting up logging to stdout INFO level logs
@@ -14,6 +11,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler((stdout_handler))
+np.random.seed(seed=32)
 
 
 class MCControlAgent:
@@ -45,7 +43,7 @@ class MCControlAgent:
     def eps(self, state: State):
         """Epsilon for the epsilon-greedy policy: eps = N0/(N0 + N(s))"""
         return self.N0 / (
-            self.N0 + self.state_count[state.dealer_first_card, state.player_sum]
+            self.N0 + self.state_count[state.dealer_first_card, state.hand_value]
         )
 
     def alpha(self, state: State, action: Action):
@@ -53,7 +51,7 @@ class MCControlAgent:
         return (
             1
             / self.state_action_count[
-                state.dealer_first_card, state.player_sum, action.value
+                state.dealer_first_card, state.hand_value, action.value
             ]
         )
 
@@ -65,7 +63,7 @@ class MCControlAgent:
         p = np.random.random()
         if p <= 1 - self.eps(state):  #  with prob 1-eps
             action = np.argmax(
-                self.action_value_function[state.dealer_first_card, state.player_sum, :]
+                self.action_value_function[state.dealer_first_card, state.hand_value, :]
             )
         else:
             action = np.random.randint(2)
@@ -112,18 +110,18 @@ class Episode:
         """At the end of the episode, update counter and policy for visited states."""
         for state, action, _ in self.visited:
             self.agent.state_action_count[
-                state.dealer_first_card, state.player_sum, action.value
+                state.dealer_first_card, state.hand_value, action.value
             ] += 1
-            self.agent.state_count[state.dealer_first_card, state.player_sum] += 1
+            self.agent.state_count[state.dealer_first_card, state.hand_value] += 1
             final_reward = self.visited[-1][2]  # G_t
             error = (
                 final_reward
                 - self.agent.action_value_function[
-                    state.dealer_first_card, state.player_sum, action.value
+                    state.dealer_first_card, state.hand_value, action.value
                 ]
             )
             self.agent.action_value_function[
-                state.dealer_first_card, state.player_sum, action.value
+                state.dealer_first_card, state.hand_value, action.value
             ] += (self.agent.alpha(state, action) * error)
 
 

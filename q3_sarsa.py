@@ -1,11 +1,8 @@
 import logging
-import os
 import sys
-from typing import Tuple
-import matplotlib.pyplot as plt
 import numpy as np
 
-from environment import Action, Game, State
+from q1_environment import Action, Game, State
 from utils import Visuals
 
 # Setting up logging to stdout INFO level logs
@@ -13,6 +10,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler((stdout_handler))
+np.random.seed(seed=32)
 
 
 class SarsaAgent:
@@ -182,10 +180,9 @@ class Episode:
 class Train:
     """This class is training the agent for many episodes."""
 
-    def __init__(self, episode_count, lamda) -> None:
+    def __init__(self, episode_count=None, lamda=None) -> None:
         self.episode_count = episode_count
         self.agent = SarsaAgent(lamda)
-        self.mse = []
         self.win_rates = []
         self.wins = 0
         self.lamda = lamda
@@ -234,26 +231,58 @@ class Train:
             # save values function for final gif
             if current_episode_count in self.print_episodes:
                 np.save(
-                    f"sarsa_results_{lamda}/sarsa_lamda_{current_episode_count}",
+                    f"sarsa_results_{self.lamda}/sarsa_lamda_{current_episode_count}",
                     self.agent.action_value_function,
                 )
                 Visuals.plot_value(
-                    f"sarsa_results_{lamda}/sarsa_lamda_{current_episode_count}.npy",
+                    f"sarsa_results_{self.lamda}/sarsa_lamda_{current_episode_count}.npy",
                     current_episode_count,
                     self.lamda,
                 )
+        np.save(f"sarsa_results_{self.lamda}/sarsa_win_rate", self.win_rates)
+        Visuals.plot_win_rates(
+            f"sarsa_results_{self.lamda}/sarsa_win_rate.npy", self.lamda
+        )
+        Visuals.make_gif(f"sarsa_results_{self.lamda}", f"Sarsa_control_{self.lamda}")
 
-    # def run_sarsa_for_assignment(self):
-    #     """Sarsa(lamda) for different lamda values, ran for 1000 iterations """
-    #     for lamda
+    def run_sarsa_for_assignment(self):
+        """Sarsa(lamda) for different lamda values, ran for 1000 iterations"""
+        final_mse = {}
+
+        with open("mc_control_results/MC_Control_1000000.npy", "rb") as f:
+            true_q = np.load(f)
+        for lamda in np.linspace(0, 1, 11):
+            self.agent = SarsaAgent(lamda)
+            self.lamda = lamda
+            if lamda in {0, 1}:
+                lamda = int(lamda)
+                mean_squared_errors = np.zeros((10000))
+            for current_episode_count in range(10000):
+                episode = Episode(self.agent)
+                episode.run_episode()
+                if lamda in {0, 1}:
+                    mean_squared_errors[current_episode_count] = mean_sqr(
+                        true_q, self.agent.action_value_function
+                    )
+
+            final_mse[lamda] = mean_sqr(true_q, self.agent.action_value_function)
+            if lamda in {0, 1}:
+                np.save(
+                    f"sarsa_results_assignment/sarsa_mse_learning_{lamda}",
+                    mean_squared_errors,
+                )
+                Visuals.plot_mse_learning(
+                    f"sarsa_results_assignment/sarsa_mse_learning_{lamda}.npy", lamda
+                )
+            Visuals.plot_mse_for_lamdas(final_mse, "sarsa_results_assignment")
+
+
+def mean_sqr(q1, q2):
+    return np.sum(np.square(q1 - q2)) / q1.size
 
 
 if __name__ == "__main__":
-    lamda = 1
-    trainer = Train(1000000, lamda)
+    # trainer = Train()
+    # trainer.run_sarsa_for_assignment()
+    trainer = Train(episode_count=1000000, lamda=1)
     trainer.run_sarsa_for_gif()
-
-    np.save(f"sarsa_results_{lamda}/sarsa_win_rate", trainer.win_rates)
-    Visuals.plot_win_rates(f"sarsa_results_{lamda}/sarsa_win_rate.npy", lamda)
-
-    Visuals.make_gif(f"sarsa_results_{lamda}", f"Sarsa_control_{lamda}")

@@ -8,8 +8,9 @@ class Visuals:
     @staticmethod
     def make_gif(folder, gif_name):
         """
-        Iterates through all the pngs in the folder that are named <method>_<epsiode>.png
-        and creates a gif out of them
+        Iterates through all the pngs in the folder that are named <method>_<episode>.png
+        and creates a gif out of them.
+        Assumes the pngs are named as "<text>_<text>_<episode number>.png"
         """
         filelist = [
             file
@@ -25,7 +26,7 @@ class Visuals:
 
     @staticmethod
     def plot_value(action_value_file, episode_count, lamda=None):
-        """Making the plots of the value function"""
+        """Making the plots of the value function to turn into gifs later"""
         with open(action_value_file, "rb") as f:
             action_value = np.load(f)
 
@@ -48,7 +49,7 @@ class Visuals:
 
     @staticmethod
     def plot_win_rates(win_rates_file, lamda=None):
-        """Making the plot of the win rate function"""
+        """Making the plot of the win rate function against episodes played"""
         with open(win_rates_file, "rb") as f:
             win_rates = np.load(f)
         fig, ax = plt.subplots(figsize=(10, 5))
@@ -60,3 +61,25 @@ class Visuals:
         else:
             ax.set_title(f"Win rates with λ={lamda}")
         fig.savefig(os.path.splitext(win_rates_file)[0] + ".png")
+
+    @staticmethod
+    def plot_mse_learning(mse_file, lamda):
+        """Making the plot of the mse against episodes played"""
+        with open(mse_file, "rb") as f:
+            mse = np.load(f)
+        fig0, ax0 = plt.subplots(figsize=(10, 5))
+        ax0.plot(mse)
+        ax0.set_xlabel("Episode")
+        ax0.set_ylabel("MSE")
+        ax0.set_title(f"MSE with λ={lamda}")
+        fig0.savefig(os.path.splitext(mse_file)[0] + ".png")
+
+    @staticmethod
+    def plot_mse_for_lamdas(mse_dict, folder):
+        """Making the plot of the win rate function against different lambdas"""
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(mse_dict.keys(), mse_dict.values())
+        ax.set_xlabel("Lambda")
+        ax.set_ylabel("MSE after 10000 episodes")
+        ax.set_title(f"MSE for different lambdas")
+        fig.savefig(f"{folder}/sarsa_mse_for_lambdas.png")

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 from random import choices
 from typing import Tuple
+import numpy as np
 
 from numpy.random import randint
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 stdout_handler = logging.StreamHandler(sys.stdout)
 logger.addHandler((stdout_handler))
+np.random.seed(seed=32)
 
 
 class Colour(Enum):
